@@ -29,18 +29,18 @@ app.use(express.json());
 // ------------------------------------
 const UPLOADS_DIR = path.resolve("pdfs");
 if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR);
+  fs.mkdirSync(UPLOADS_DIR);
 }
 
 // ------------------------------------
-// Multer storage config (file saved permanently)
+// Multer Storage (Permanent Save)
 // ------------------------------------
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, UPLOADS_DIR);
   },
   filename: function (req, file, cb) {
-    cb(null, "uploaded.pdf"); // Always overwrite the previous file
+    cb(null, "uploaded.pdf");
   }
 });
 
@@ -59,7 +59,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     docStore = {
       pages,
-      originalPath: filePath
+      originalPath: filePath,
     };
 
     await createVectorStore(pages);
@@ -104,7 +104,7 @@ app.post("/chat", async (req, res) => {
 });
 
 // ------------------------------------
-// Serve Extracted Page Text (optional)
+// Serve Extracted Page Text (Optional)
 // ------------------------------------
 app.get("/pdf/:page", (req, res) => {
   if (!docStore) return res.status(404).send("No document uploaded");
@@ -118,12 +118,18 @@ app.get("/pdf/:page", (req, res) => {
 });
 
 // ------------------------------------
-// Serve original PDF (MAIN FIX)
+// Serve Original PDF (MAIN FIX)
 // ------------------------------------
 app.get("/pdf-file", (req, res) => {
   if (!docStore) return res.status(404).send("No PDF uploaded.");
 
-  res.sendFile(docStore.originalPath);
+  const filePath = docStore.originalPath;
+
+  // 🔥 IMPORTANT FIX: Set correct headers
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", "inline; filename=uploaded.pdf");
+
+  res.sendFile(filePath);
 });
 
 // ------------------------------------
