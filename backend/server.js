@@ -29,7 +29,8 @@ app.use(express.json());
 // ----------------------
 const upload = multer({ dest: "uploads/" });
 
-let docStore = null; // { pages: [ { page, text } ], originalPath }
+let docStore = null;
+// docStore = { pages: [...], originalPath: "uploads/xyz.pdf" }
 
 // ----------------------
 // 📌 UPLOAD PDF
@@ -41,8 +42,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     const filePath = req.file.path;
 
-    // Extract text pagewise
-    const pages = await extractTextFromPDF(filePath); // returns [{page,text}]
+    // Extract text pagewise (for chatbot only)
+    const pages = await extractTextFromPDF(filePath);
 
     docStore = {
       pages,
@@ -91,18 +92,27 @@ app.post("/chat", async (req, res) => {
 });
 
 // ----------------------
-// 📌 RETURN PAGE TEXT (for viewer)
+// 📌 RETURN EXTRACTED PAGE TEXT
+// (This is optional, used only if needed)
 // ----------------------
 app.get("/pdf/:page", (req, res) => {
   if (!docStore) return res.status(404).send("No document uploaded");
 
   const pageIndex = parseInt(req.params.page, 10) - 1;
-
   const pageObj = docStore.pages[pageIndex];
 
   if (!pageObj) return res.status(404).send("Page not found");
 
   res.send(pageObj.text);
+});
+
+// ----------------------
+// 📌 RETURN ORIGINAL PDF (REAL VIEWER)
+// ----------------------
+app.get("/pdf-file", (req, res) => {
+  if (!docStore) return res.status(404).send("No PDF uploaded.");
+
+  res.sendFile(path.resolve(docStore.originalPath));
 });
 
 // ----------------------
