@@ -93,7 +93,6 @@ app.post("/chat", async (req, res) => {
 
 // ----------------------
 // 📌 RETURN EXTRACTED PAGE TEXT
-// (This is optional, used only if needed)
 // ----------------------
 app.get("/pdf/:page", (req, res) => {
   if (!docStore) return res.status(404).send("No document uploaded");
@@ -107,7 +106,7 @@ app.get("/pdf/:page", (req, res) => {
 });
 
 // ----------------------
-// 📌 RETURN ORIGINAL PDF (REAL VIEWER)
+// 📌 RETURN ORIGINAL PDF (REAL 9-PAGE VIEWER)
 // ----------------------
 app.get("/pdf-file", (req, res) => {
   if (!docStore) return res.status(404).send("No PDF uploaded.");
