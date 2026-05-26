@@ -8,7 +8,9 @@ import { createVectorStore, queryVectorStore } from "./utils/vectorStore.js";
 
 const app = express();
 
-// ✅ CORS FIXED — supports Netlify & local dev
+// ----------------------
+// ✅ CORS CONFIG
+// ----------------------
 app.use(
   cors({
     origin: [
@@ -22,14 +24,16 @@ app.use(
 
 app.use(express.json());
 
-// 🔹 Multer Upload Config (stores PDFs in /uploads)
+// ----------------------
+// 📌 Multer Upload (PDF)
+// ----------------------
 const upload = multer({ dest: "uploads/" });
 
-let docStore = null; // will hold { pages: [], originalPath: "" }
+let docStore = null; // { pages: [ { page, text } ], originalPath }
 
-// =========================
-//     📌 UPLOAD PDF
-// =========================
+// ----------------------
+// 📌 UPLOAD PDF
+// ----------------------
 app.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file)
@@ -37,10 +41,13 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     const filePath = req.file.path;
 
-    // Extract text from the PDF
-    const pages = await extractTextFromPDF(filePath);
+    // Extract text pagewise
+    const pages = await extractTextFromPDF(filePath); // returns [{page,text}]
 
-    docStore = { pages, originalPath: filePath };
+    docStore = {
+      pages,
+      originalPath: filePath
+    };
 
     await createVectorStore(pages);
 
@@ -51,15 +58,16 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// =========================
-//         📌 CHAT
-// =========================
+// ----------------------
+// 📌 CHAT ENDPOINT
+// ----------------------
 app.post("/chat", async (req, res) => {
   try {
     const { question } = req.body;
 
-    if (!docStore)
+    if (!docStore) {
       return res.status(400).json({ error: "Please upload a PDF first." });
+    }
 
     const contexts = await queryVectorStore(question);
 
@@ -82,9 +90,9 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-// =========================
-//   📌 RETURN PAGE TEXT
-// =========================
+// ----------------------
+// 📌 RETURN PAGE TEXT (for viewer)
+// ----------------------
 app.get("/pdf/:page", (req, res) => {
   if (!docStore) return res.status(404).send("No document uploaded");
 
@@ -97,9 +105,9 @@ app.get("/pdf/:page", (req, res) => {
   res.send(pageObj.text);
 });
 
-// =========================
-//      📌 SERVER START
-// =========================
+// ----------------------
+// 📌 START SERVER
+// ----------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`Backend running on port ${PORT}`)
