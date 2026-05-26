@@ -7,7 +7,14 @@ import { extractTextFromPDF } from "./utils/extractText.js";
 import { createVectorStore, queryVectorStore } from "./utils/vectorStore.js";
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://pvnsmartnotes.netlify.app", 
+    "http://localhost:5173"
+  ],
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
