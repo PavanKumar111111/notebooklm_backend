@@ -8,9 +8,9 @@ import { createVectorStore, queryVectorStore } from "./utils/vectorStore.js";
 
 const app = express();
 
-// ----------------------
-// ✅ CORS CONFIG
-// ----------------------
+// ------------------------------------
+// CORS
+// ------------------------------------
 app.use(
   cors({
     origin: [
@@ -24,25 +24,37 @@ app.use(
 
 app.use(express.json());
 
-// ----------------------
-// 📌 Multer Upload (PDF)
-// ----------------------
-const upload = multer({ dest: "uploads/" });
+// ------------------------------------
+// Permanent PDF Storage Folder
+// ------------------------------------
+const UPLOADS_DIR = path.resolve("pdfs");
+if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR);
+}
+
+// ------------------------------------
+// Multer storage config (file saved permanently)
+// ------------------------------------
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: function (req, file, cb) {
+    cb(null, "uploaded.pdf"); // Always overwrite the previous file
+  }
+});
+
+const upload = multer({ storage });
 
 let docStore = null;
-// docStore = { pages: [...], originalPath: "uploads/xyz.pdf" }
 
-// ----------------------
-// 📌 UPLOAD PDF
-// ----------------------
+// ------------------------------------
+// Upload PDF
+// ------------------------------------
 app.post("/upload", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file)
-      return res.status(400).json({ ok: false, error: "No file uploaded" });
+    const filePath = path.join(UPLOADS_DIR, "uploaded.pdf");
 
-    const filePath = req.file.path;
-
-    // Extract text pagewise (for chatbot only)
     const pages = await extractTextFromPDF(filePath);
 
     docStore = {
@@ -59,9 +71,9 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// ----------------------
-// 📌 CHAT ENDPOINT
-// ----------------------
+// ------------------------------------
+// Chat Endpoint
+// ------------------------------------
 app.post("/chat", async (req, res) => {
   try {
     const { question } = req.body;
@@ -91,9 +103,9 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-// ----------------------
-// 📌 RETURN EXTRACTED PAGE TEXT
-// ----------------------
+// ------------------------------------
+// Serve Extracted Page Text (optional)
+// ------------------------------------
 app.get("/pdf/:page", (req, res) => {
   if (!docStore) return res.status(404).send("No document uploaded");
 
@@ -105,18 +117,18 @@ app.get("/pdf/:page", (req, res) => {
   res.send(pageObj.text);
 });
 
-// ----------------------
-// 📌 RETURN ORIGINAL PDF (REAL 9-PAGE VIEWER)
-// ----------------------
+// ------------------------------------
+// Serve original PDF (MAIN FIX)
+// ------------------------------------
 app.get("/pdf-file", (req, res) => {
   if (!docStore) return res.status(404).send("No PDF uploaded.");
 
-  res.sendFile(path.resolve(docStore.originalPath));
+  res.sendFile(docStore.originalPath);
 });
 
-// ----------------------
-// 📌 START SERVER
-// ----------------------
+// ------------------------------------
+// Start Server
+// ------------------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`Backend running on port ${PORT}`)
